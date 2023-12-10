@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rating Widget</title>
+  <style>
+    rating-widget::part(stars) {
+      font-size: 40px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Rating Widget</h1>
+
+  <rating-widget stars="10">
+    <form action="https://httpbin.org/post" method="POST" id="myForm">
+      <label for="rating">How satisfied are you?</label>
+      <input type="hidden" name="question" value="How satisfied are you?">
+      <input type="hidden" name="sentBy" id="sentBy" value="HTML">
+      <input type="number" id="rating" name="rating" min="1" max="10" value="0" required>
+      <button type="submit">Submit</button>
+    </form>
+  </rating-widget>
+
+  <script>
+    class RatingWidget extends HTMLElement {
+      constructor() {
+        super();
+
+        this.attachShadow({ mode: 'open' });
+        this.starsCount = this.getAttribute('stars') || 5;
+        if(this.starsCount < 3) {
+          this.starsCount = 3;
+        }
+        if(this.starsCount > 10) {
+          this.starsCount = 10;
+        }
+        this.starsContainer = document.createElement('div');
+        this.shadowRoot.appendChild(this.starsContainer);
+        this.messageContainer = document.createElement('div');
+        this.shadowRoot.appendChild(this.messageContainer);
+      }
+
+      connectedCallback() {
+        if (!this.querySelector('.stars')) {
+          
+          this.starsContainer.classList.add('stars');
+          this.starsContainer.id = 'stars-container';
+          this.starsContainer.innerHTML = this.generateStars(this.starsCount);
+          this.starsContainer.setAttribute('part', 'stars');
+
+          
+          this.starsContainer.addEventListener('mouseover', (event) => {
+            const star = event.target;
+            const ratingValue = star.getAttribute('data-value');
+            this.highlightSelectedStars(ratingValue);
+          });
+
+          
+          this.starsContainer.addEventListener('mouseout', () => {
+            const ratingInput = this.closest('rating-widget').querySelector('#rating');
+            const selectedValue = ratingInput.value;
+            this.highlightSelectedStars(selectedValue);
+          });
+
+          this.starsContainer.addEventListener('click', (event) => {
+            this.handleStarClick(event);
+          });
+        }
+      }
+
+      generateStars(numStars) {
+        let starsHTML = '';
+        for (let i = 1; i <= numStars; i++) {
+          starsHTML += `<span data-value="${i}">&#9733;</span>`;
+        }
+        return starsHTML;
+      }
+
+      handleStarClick(event) {
+          // Handle star click event and update the hidden input value
+          const ratingInput = this.querySelector('#rating');
+          if (ratingInput && event.target.tagName === 'SPAN') {
+              const ratingValue = event.target.getAttribute('data-value');
+              ratingInput.value = ratingValue;
+
+              /*
+              const form = this.querySelector('form');
+              var sentBy = document.getElementById('sentBy');
+              sentBy.value = 'js';
+              console.log(form);
+              */
+
+              var form = document.getElementById("myForm");
+              var rating = document.getElementById("rating");
+              rating.value = ratingValue;
+              var formData = new FormData(form);
+              var xhr = new XMLHttpRequest();
+              xhr.open("POST", "https://httpbin.org/post", true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                xhr.setRequestHeader("X-Sent-By", "JS");
+                xhr.onreadystatechange = function() {
+                  if (xhr.readyState === 4 && xhr.status === 200) {
+                    console.log(xhr.responseText);
+                  }
+                };
+                xhr.send(formData);
+                console.log("Request is ",xhr);
+
+              // Calculate rating percentage
+              const ratingPercentage = (ratingValue / this.starsCount) * 100;
+
+              // Display message based on rating percentage
+              if (ratingPercentage >= 80) {
+                this.messageContainer.innerHTML = `Thank you for your ${ratingValue} star rating!`;
+              } else {
+                this.messageContainer.innerHTML = `Thank you for your ${ratingValue} star rating. Please let us know how we can improve.`;
+              }
+
+              // Hide stars and display message
+              this.starsContainer.style.display = 'none';
+              this.messageContainer.style.display = 'block';
+          }
+      }
+
+      highlightSelectedStars(selectedValue) {
+        const stars = this.shadowRoot.querySelectorAll('.stars span');
+        stars.forEach(star => {
+          const value = star.getAttribute('data-value');
+          if(parseInt(value) <= parseInt(selectedValue)) {
+            star.style.color = 'gold';
+          }
+          else {
+            star.style.color = '';
+          }
+        });
+      }
+    }
+
+    customElements.define('rating-widget', RatingWidget);
+  </script>
+
+</body>
+</html>
